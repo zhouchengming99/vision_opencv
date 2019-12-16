@@ -36,7 +36,6 @@
 
 #include <cv_bridge/cv_bridge.h>
 #include <cv_bridge/rgb_colors.h>
-#include <boost/endian/conversion.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <sensor_msgs/image_encodings.hpp>
@@ -52,6 +51,17 @@ namespace enc = sensor_msgs::image_encodings;
 
 namespace cv_bridge
 {
+
+typedef union uEndianTest {
+  struct {
+    bool flittle_endian;
+    bool fill[3];
+  };
+  long value;
+} EndianTest;
+
+static const EndianTest __Endian_Test__ = { .value=1 };
+const bool platform_big_endian = !__Endian_Test__.flittle_endian;
 
 static int depthStrToInt(const std::string depth)
 {
@@ -289,8 +299,7 @@ cv::Mat matFromImage(const sensor_msgs::msg::Image & source)
   // If the endianness is the same as locally, share the data
   cv::Mat mat(source.height, source.width, source_type, const_cast<uchar *>(&source.data[0]),
     source.step);
-  if ((boost::endian::order::native == boost::endian::order::big && source.is_bigendian) ||
-    (boost::endian::order::native == boost::endian::order::little && !source.is_bigendian) ||
+  if (source.is_bigendian == platform_big_endian ||
     byte_depth == 1)
   {
     return mat;
@@ -382,7 +391,7 @@ void CvImage::toImageMsg(sensor_msgs::msg::Image & ros_image) const
   ros_image.height = image.rows;
   ros_image.width = image.cols;
   ros_image.encoding = encoding;
-  ros_image.is_bigendian = (boost::endian::order::native == boost::endian::order::big);
+  ros_image.is_bigendian = platform_big_endian;
   ros_image.step = image.cols * image.elemSize();
   size_t size = ros_image.step * image.rows;
   ros_image.data.resize(size);
@@ -431,8 +440,8 @@ CvImageConstPtr toCvShare(
   const std::string & encoding)
 {
   // If the encoding different or the endianness different, you have to copy
-  if ((!encoding.empty() && source.encoding != encoding) || (!source.is_bigendian !=
-    (boost::endian::order::native != boost::endian::order::big)))
+  if ((!encoding.empty() && source.encoding != encoding) ||
+    source.is_bigendian != platform_big_endian)
   {
     return toCvCopy(source, encoding);
   }

@@ -12,30 +12,6 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra)
 endif()
 
-if(NOT ANDROID)
-  find_package(PythonLibs)
-  if(PYTHONLIBS_VERSION_STRING VERSION_LESS 3)
-    find_package(Boost REQUIRED python)
-  else()
-    find_package(Boost QUIET)
-    if(Boost_VERSION LESS 106500)
-      find_package(Boost REQUIRED python)
-    else()
-      # This is a bit of a hack to suppress a warning
-      #   No header defined for python3; skipping header check
-      # Which should only affect Boost versions < 1.67
-      # Resolution for newer versions:
-      #  https://gitlab.kitware.com/cmake/cmake/issues/16391
-      if (Boost_VERSION LESS 106700)
-        set(_Boost_PYTHON3_HEADERS "boost/python.hpp")
-      endif()
-      find_package(Boost COMPONENTS python3 REQUIRED)
-    endif()
-  endif()
-else()
-  find_package(Boost REQUIRED)
-endif()
-
 find_package(sensor_msgs REQUIRED)
 find_package(OpenCV 3 REQUIRED
   COMPONENTS
@@ -45,7 +21,7 @@ find_package(OpenCV 3 REQUIRED
   CONFIG
 )
 
-include_directories(include ${Boost_INCLUDE_DIRS})
+include_directories(include)
 
 if(NOT ANDROID)
   add_subdirectory(python)
